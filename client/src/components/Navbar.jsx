@@ -2,7 +2,7 @@ import { Link, useNavigate } from "react-router-dom";
 import useAuth from "../hooks/useAuth";
 
 function Navbar() {
-  const { user, logout, isAdmin, isReceptionist } = useAuth();
+  const { user, logout, isAdmin } = useAuth();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -24,10 +24,12 @@ function Navbar() {
   };
 
   return (
-    <nav className="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm py-2">
+    <nav className="app-navbar navbar navbar-expand-lg navbar-dark navbar-dark-gradient py-2">
       <div className="container-fluid px-4">
         <Link className="navbar-brand d-flex align-items-center fw-bold text-uppercase" to="/dashboard">
-          <span className="me-2 text-warning fs-4">🛡️</span>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="me-2 brand-shield" width="24" height="24" aria-hidden="true">
+            <path d="M12 2 4 5v6c0 5.55 3.84 10.74 8 12 4.16-1.26 8-6.45 8-12V5l-8-3z" />
+          </svg>
           <span>Visitor Pass System</span>
         </Link>
 
@@ -42,32 +44,6 @@ function Navbar() {
 
         <div className="collapse navbar-collapse" id="navbarNav">
           <ul className="navbar-nav me-auto mb-2 mb-lg-0">
-            <li className="nav-item">
-              <Link className="nav-link" to="/dashboard">
-                Dashboard
-              </Link>
-            </li>
-
-            <li className="nav-item">
-              <Link className="nav-link" to="/visitors">
-                Visitor Records
-              </Link>
-            </li>
-
-            {(isReceptionist || isAdmin) && (
-              <li className="nav-item">
-                <Link className="nav-link text-warning fw-semibold" to="/visitors/new">
-                  + Register Visitor
-                </Link>
-              </li>
-            )}
-
-            <li className="nav-item">
-              <Link className="nav-link" to="/reports">
-                Reports
-              </Link>
-            </li>
-
             {isAdmin && (
               <li className="nav-item">
                 <Link className="nav-link" to="/users">

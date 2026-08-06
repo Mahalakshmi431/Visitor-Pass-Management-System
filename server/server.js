@@ -1,17 +1,9 @@
-const express = require("express");
-const cors = require("cors");
 const dotenv = require("dotenv");
 const connectDB = require("./config/db");
 const User = require("./models/User");
-const { errorHandler, notFound } = require("./middleware/errorMiddleware");
+const app = require("./app");
 
 dotenv.config();
-
-const app = express();
-
-// Middleware
-app.use(cors());
-app.use(express.json());
 
 // Default Seed Accounts for Testing
 const seedDefaultUsers = async () => {
@@ -76,21 +68,6 @@ const seedDefaultUsers = async () => {
 connectDB().then(() => {
   seedDefaultUsers();
 });
-
-// Test Route
-app.get("/", (req, res) => {
-  res.send("Visitor Pass Management System API Running...");
-});
-
-// API Routes
-app.use("/api/auth", require("./routes/authRoutes"));
-app.use("/api/users", require("./routes/userRoutes"));
-app.use("/api/visitors", require("./routes/visitorRoutes"));
-app.use("/api", require("./routes/reportRoutes"));
-
-// Error Handlers
-app.use(notFound);
-app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 

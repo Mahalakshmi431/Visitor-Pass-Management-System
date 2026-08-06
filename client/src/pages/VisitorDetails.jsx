@@ -43,10 +43,19 @@ function VisitorDetails() {
     <div>
       <div className="d-flex justify-content-between align-items-center mb-4 d-print-none">
         <Link to="/visitors" className="btn btn-outline-secondary">
-          ← Back to Visitor List
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="16" height="16" className="me-1" aria-hidden="true">
+            <line x1="19" y1="12" x2="5" y2="12" />
+            <polyline points="12 19 5 12 12 5" />
+          </svg>
+          Back to Visitor List
         </Link>
         <button onClick={handlePrint} className="btn btn-primary px-4 fw-semibold shadow-sm">
-          🖨️ Print Visitor Badge
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="16" height="16" className="me-2" aria-hidden="true">
+            <polyline points="6 9 6 2 18 2 18 9" />
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+            <rect x="6" y="14" width="12" height="8" />
+          </svg>
+          Print Visitor Badge
         </button>
       </div>
 

@@ -10,7 +10,12 @@ function Profile() {
       <div className="row justify-content-center">
         <div className="col-md-6">
           <div className="card shadow-sm border-0 p-4 bg-white text-center">
-            <div className="fs-1 mb-2">👤</div>
+            <div className="profile-avatar mx-auto mb-3">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="38" height="38" aria-hidden="true">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
+            </div>
             <h3 className="fw-bold">{user.name}</h3>
             <p className="text-muted">{user.email}</p>
 

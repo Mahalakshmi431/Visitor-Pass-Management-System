@@ -83,8 +83,30 @@ const getEmployees = async (req, res, next) => {
 // @route GET /api/users
 const getAllUsers = async (req, res, next) => {
   try {
-    const users = await User.find({}).select("-password").sort({ createdAt: -1 });
+    const users = await User.find({}).select("-password -demoPassword").sort({ createdAt: -1 });
     res.json(users);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc Get demo quick-fill login accounts (for the login screen)
+// @route GET /api/auth/demo-accounts
+const getDemoAccounts = async (req, res, next) => {
+  try {
+    const users = await User.find({ isActive: true })
+      .select("+demoPassword name email role department")
+      .sort({ createdAt: 1 });
+
+    res.json(
+      users.map((u) => ({
+        name: u.name,
+        email: u.email,
+        role: u.role,
+        department: u.department,
+        password: u.demoPassword || "",
+      }))
+    );
   } catch (error) {
     next(error);
   }
@@ -105,6 +127,7 @@ const createUser = async (req, res, next) => {
       name,
       email: email.toLowerCase(),
       password,
+      demoPassword: password,
       role: role || "Employee",
       department: department || "General",
       phone: phone || "",
@@ -175,6 +198,7 @@ const changePassword = async (req, res, next) => {
 module.exports = {
   loginUser,
   getMe,
+  getDemoAccounts,
   getEmployees,
   getAllUsers,
   createUser,

@@ -10,6 +10,11 @@ export const getMeApi = async () => {
   return response.data;
 };
 
+export const getDemoAccountsApi = async () => {
+  const response = await api.get("/auth/demo-accounts");
+  return response.data;
+};
+
 export const getEmployeesApi = async () => {
   const response = await api.get("/users/employees");
   return response.data;

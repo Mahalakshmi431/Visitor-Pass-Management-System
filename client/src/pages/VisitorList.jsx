@@ -240,7 +240,11 @@ function VisitorList() {
         <Loader message="Fetching visitor records..." />
       ) : visitors.length === 0 ? (
         <div className="card shadow-sm border-0 p-5 text-center bg-white">
-          <div className="fs-1 text-muted mb-2">📁</div>
+          <div className="fs-1 text-muted mb-2">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" width="52" height="52" aria-hidden="true">
+              <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+            </svg>
+          </div>
           <h5 className="fw-bold text-dark">No Visitor Records Found</h5>
           <p className="text-muted small">No records match your search filters.</p>
         </div>
@@ -330,6 +334,13 @@ function VisitorList() {
                             >
                               Cancel
                             </button>
+                          )}
+
+                        {(isReceptionist || isAdmin) &&
+                          (item.status === "PENDING" || item.status === "APPROVED") && (
+                            <Link to={`/visitors/${item._id}/edit`} className="btn btn-outline-secondary btn-sm">
+                              Edit
+                            </Link>
                           )}
 
                         <Link to={`/visitors/${item._id}`} className="btn btn-light btn-sm border">

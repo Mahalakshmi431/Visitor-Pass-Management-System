@@ -1,0 +1,22 @@
+{
+  "name": "visitor-pass-management-system",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Visitor Pass Management System - MERN app deployed as Netlify Functions + static client",
+  "scripts": {
+    "build": "npm --prefix client install && npm --prefix client run build",
+    "dev:client": "npm --prefix client run dev",
+    "dev:server": "npm --prefix server run dev",
+    "seed": "npm --prefix server run seed"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "express-validator": "^7.3.2",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.9.1",
+    "serverless-http": "^3.2.0"
+  }
+}

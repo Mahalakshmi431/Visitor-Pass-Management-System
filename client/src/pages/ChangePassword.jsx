@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { changePasswordApi } from "../services/authService";
+import PasswordInput from "../components/PasswordInput";
 
 function ChangePassword() {
   const [formData, setFormData] = useState({
@@ -75,10 +76,8 @@ function ChangePassword() {
             <form onSubmit={handleSubmit}>
               <div className="mb-3">
                 <label className="form-label small fw-semibold text-muted">Current Password</label>
-                <input
-                  type="password"
+                <PasswordInput
                   name="currentPassword"
-                  className="form-control"
                   placeholder="••••••••"
                   value={formData.currentPassword}
                   onChange={handleChange}
@@ -88,10 +87,8 @@ function ChangePassword() {
 
               <div className="mb-3">
                 <label className="form-label small fw-semibold text-muted">New Password</label>
-                <input
-                  type="password"
+                <PasswordInput
                   name="newPassword"
-                  className="form-control"
                   placeholder="At least 6 characters"
                   value={formData.newPassword}
                   onChange={handleChange}
@@ -102,10 +99,8 @@ function ChangePassword() {
 
               <div className="mb-4">
                 <label className="form-label small fw-semibold text-muted">Confirm New Password</label>
-                <input
-                  type="password"
+                <PasswordInput
                   name="confirmPassword"
-                  className="form-control"
                   placeholder="Re-enter new password"
                   value={formData.confirmPassword}
                   onChange={handleChange}

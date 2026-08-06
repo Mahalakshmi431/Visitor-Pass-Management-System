@@ -4,6 +4,7 @@ import Login from "../pages/Login";
 import Dashboard from "../pages/Dashboard";
 import VisitorList from "../pages/VisitorList";
 import AddVisitor from "../pages/AddVisitor";
+import EditVisitor from "../pages/EditVisitor";
 import VisitorDetails from "../pages/VisitorDetails";
 import UserManagement from "../pages/UserManagement";
 import Reports from "../pages/Reports";
@@ -21,7 +22,7 @@ function MainLayout() {
       <Navbar />
       <div className="d-flex flex-grow-1">
         <Sidebar />
-        <main className="flex-grow-1 p-4 overflow-auto">
+        <main className="app-main flex-grow-1 p-4 overflow-auto">
           <Outlet />
         </main>
       </div>
@@ -50,6 +51,7 @@ function AppRoutes() {
             element={<ProtectedRoute allowedRoles={["Receptionist", "Administrator"]} />}
           >
             <Route path="/visitors/new" element={<AddVisitor />} />
+            <Route path="/visitors/:id/edit" element={<EditVisitor />} />
           </Route>
 
           {/* Admin User Management route */}

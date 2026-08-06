@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { getUsersApi, createUserApi, toggleUserStatusApi } from "../services/authService";
 import Loader from "../components/Loader";
+import PasswordInput from "../components/PasswordInput";
 
 function UserManagement() {
   const [users, setUsers] = useState([]);
@@ -143,10 +144,8 @@ function UserManagement() {
 
               <div className="mb-3">
                 <label className="form-label small fw-semibold text-muted">Password</label>
-                <input
-                  type="password"
+                <PasswordInput
                   name="password"
-                  className="form-control"
                   placeholder="••••••••"
                   value={formData.password}
                   onChange={handleChange}
