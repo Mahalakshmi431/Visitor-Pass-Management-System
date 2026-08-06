@@ -1,0 +1,40 @@
+import useAuth from "../hooks/useAuth";
+
+function Profile() {
+  const { user } = useAuth();
+
+  if (!user) return null;
+
+  return (
+    <div className="container-fluid py-3">
+      <div className="row justify-content-center">
+        <div className="col-md-6">
+          <div className="card shadow-sm border-0 p-4 bg-white text-center">
+            <div className="fs-1 mb-2">👤</div>
+            <h3 className="fw-bold">{user.name}</h3>
+            <p className="text-muted">{user.email}</p>
+
+            <span className="badge bg-primary fs-6 px-3 py-2 align-self-center mb-4">
+              ROLE: {user.role}
+            </span>
+
+            <div className="text-start border-top pt-3">
+              <div className="row g-3">
+                <div className="col-6">
+                  <div className="small text-muted text-uppercase fw-bold">Department</div>
+                  <div className="fw-semibold">{user.department || "General"}</div>
+                </div>
+                <div className="col-6">
+                  <div className="small text-muted text-uppercase fw-bold">Phone</div>
+                  <div className="fw-semibold">{user.phone || "Not Provided"}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default Profile;
