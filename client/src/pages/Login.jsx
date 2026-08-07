@@ -48,7 +48,13 @@ function Login() {
       await login(formData.email, formData.password);
       navigate("/dashboard");
     } catch (err) {
-      setError(err.response?.data?.message || "Login failed. Invalid email or password.");
+      const message = err.response?.data?.message;
+      setError(
+        message ||
+          (err.response
+            ? "Login failed. Invalid email or password."
+            : "Cannot reach the server. Please make sure the backend is running and try again.")
+      );
     } finally {
       setSubmitting(false);
     }

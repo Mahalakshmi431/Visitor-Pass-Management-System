@@ -25,6 +25,7 @@ function Sidebar() {
 
         <NavLink
           to="/visitors"
+          end
           className={({ isActive }) => `nav-link d-flex align-items-center gap-2 ${isActive ? "active" : "text-dark"}`}
         >
           <span>

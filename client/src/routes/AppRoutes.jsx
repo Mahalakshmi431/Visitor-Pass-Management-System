@@ -42,9 +42,6 @@ function AppRoutes() {
         <Route element={<MainLayout />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/visitors" element={<VisitorList />} />
-          <Route path="/visitors/:id" element={<VisitorDetails />} />
-          <Route path="/reports" element={<Reports />} />
-          <Route path="/profile" element={<Profile />} />
 
           {/* Receptionist & Admin registration route */}
           <Route
@@ -53,6 +50,10 @@ function AppRoutes() {
             <Route path="/visitors/new" element={<AddVisitor />} />
             <Route path="/visitors/:id/edit" element={<EditVisitor />} />
           </Route>
+
+          <Route path="/visitors/:id" element={<VisitorDetails />} />
+          <Route path="/reports" element={<Reports />} />
+          <Route path="/profile" element={<Profile />} />
 
           {/* Admin User Management route */}
           <Route element={<ProtectedRoute allowedRoles={["Administrator"]} />}>

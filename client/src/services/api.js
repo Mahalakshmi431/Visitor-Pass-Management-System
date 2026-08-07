@@ -22,4 +22,22 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// Interceptor to clear stale/invalid tokens on 401 so the user is never
+// stuck on an "authentication error". The login endpoint is excluded: there a
+// 401 means wrong credentials and must still surface the server message.
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error.response?.status;
+    const url = error.config?.url || "";
+    if (status === 401 && !url.includes("/auth/login")) {
+      localStorage.removeItem("token");
+      if (window.location.pathname !== "/") {
+        window.location.href = "/";
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export default api;
