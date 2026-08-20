@@ -20,7 +20,6 @@ export const updateVisitorApi = async (id, visitorData) => {
   return response.data;
 };
 
-
 export const approveVisitorApi = async (id, remarks) => {
   const response = await api.put(`/visitors/${id}/approve`, { remarks });
   return response.data;
@@ -43,5 +42,10 @@ export const checkOutVisitorApi = async (id) => {
 
 export const cancelVisitorApi = async (id) => {
   const response = await api.put(`/visitors/${id}/cancel`);
+  return response.data;
+};
+
+export const bulkOperationApi = async (action, ids) => {
+  const response = await api.put(`/visitors/bulk/${action}`, { ids });
   return response.data;
 };

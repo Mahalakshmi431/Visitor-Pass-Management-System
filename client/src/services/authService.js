@@ -35,6 +35,11 @@ export const toggleUserStatusApi = async (userId) => {
   return response.data;
 };
 
+export const updateUserApi = async (userId, userData) => {
+  const response = await api.put(`/users/${userId}`, userData);
+  return response.data;
+};
+
 export const changePasswordApi = async (passwordData) => {
   const response = await api.put("/auth/change-password", passwordData);
   return response.data;

@@ -5,6 +5,7 @@ const {
   getAllUsers,
   createUser,
   toggleUserStatus,
+  updateUser,
 } = require("../controllers/authController");
 const { protect, authorizeRoles } = require("../middleware/authMiddleware");
 
@@ -14,6 +15,7 @@ router.get("/employees", protect, getEmployees);
 // User account management (Admin only)
 router.get("/", protect, authorizeRoles("Administrator"), getAllUsers);
 router.post("/", protect, authorizeRoles("Administrator"), createUser);
+router.put("/:id", protect, authorizeRoles("Administrator"), updateUser);
 router.put("/:id/toggle-status", protect, authorizeRoles("Administrator"), toggleUserStatus);
 
 module.exports = router;

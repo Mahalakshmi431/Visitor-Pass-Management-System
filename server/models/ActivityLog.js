@@ -40,4 +40,8 @@ const activityLogSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+activityLogSchema.index({ visitorId: 1, timestamp: -1 });
+activityLogSchema.index({ timestamp: -1 });
+activityLogSchema.index({ performedById: 1 });
+
 module.exports = mongoose.model("ActivityLog", activityLogSchema);

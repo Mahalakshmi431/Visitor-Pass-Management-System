@@ -162,6 +162,44 @@ const toggleUserStatus = async (req, res, next) => {
   }
 };
 
+// @desc Admin: Update user details
+// @route PUT /api/users/:id
+const updateUser = async (req, res, next) => {
+  try {
+    const { name, email, role, department, phone } = req.body;
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (email && email.toLowerCase() !== user.email) {
+      const existing = await User.findOne({ email: email.toLowerCase() });
+      if (existing) {
+        return res.status(400).json({ message: "Email already in use by another account" });
+      }
+      user.email = email.toLowerCase();
+    }
+
+    if (name) user.name = name;
+    if (role) user.role = role;
+    if (department !== undefined) user.department = department;
+    if (phone !== undefined) user.phone = phone;
+
+    await user.save();
+    res.json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      department: user.department,
+      phone: user.phone,
+      isActive: user.isActive,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // @desc Change password
 // @route PUT /api/auth/change-password
 const changePassword = async (req, res, next) => {
@@ -195,6 +233,32 @@ const changePassword = async (req, res, next) => {
   }
 };
 
+// @desc Update user profile
+// @route PUT /api/auth/update-profile
+const updateProfile = async (req, res, next) => {
+  try {
+    const { name, phone, department } = req.body;
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    if (name) user.name = name;
+    if (phone !== undefined) user.phone = phone;
+    if (department !== undefined) user.department = department;
+    await user.save();
+    res.json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      department: user.department,
+      phone: user.phone,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   loginUser,
   getMe,
@@ -203,6 +267,8 @@ module.exports = {
   getAllUsers,
   createUser,
   toggleUserStatus,
+  updateUser,
   changePassword,
+  updateProfile,
 };
 

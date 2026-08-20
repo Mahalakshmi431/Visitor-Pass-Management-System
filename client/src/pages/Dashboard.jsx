@@ -1,13 +1,15 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import useAuth from "../hooks/useAuth";
-import { getDashboardStatsApi, getActivityLogsApi } from "../services/reportService";
+import { getDashboardStatsApi, getActivityLogsApi, getAnalyticsApi } from "../services/reportService";
+import { StatusDonut, DailyTrend, TopCompanies, HourlyDistribution, TopHosts, PurposeBreakdown } from "../components/DashboardCharts";
 import Loader from "../components/Loader";
 
 function Dashboard() {
   const { user, isAdmin, isReceptionist, isEmployee } = useAuth();
   const [stats, setStats] = useState(null);
   const [activities, setActivities] = useState([]);
+  const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -15,6 +17,9 @@ function Dashboard() {
       try {
         const statsData = await getDashboardStatsApi();
         setStats(statsData);
+
+        const analyticsData = await getAnalyticsApi({ range: "week" });
+        setAnalytics(analyticsData);
 
         if (isAdmin) {
           const logsData = await getActivityLogsApi();
@@ -137,6 +142,47 @@ function Dashboard() {
               </div>
             </div>
           </>
+        )}
+      </div>
+
+      {/* Analytics Charts */}
+      <div className="card shadow-sm border-0 p-4 mb-4 bg-white">
+        <div className="d-flex justify-content-between align-items-center mb-3">
+          <h5 className="fw-bold mb-0">Analytics Overview</h5>
+          <span className="badge bg-light text-dark border fw-normal">Last 7 days</span>
+        </div>
+        {analytics && analytics.totalVisitors > 0 ? (
+          <>
+            <div className="row g-3 mb-3">
+              <div className="col-lg-4">
+                <StatusDonut data={analytics.statusDistribution} />
+              </div>
+              <div className="col-lg-8">
+                <DailyTrend data={analytics.dailyTrend} />
+              </div>
+            </div>
+            <div className="row g-3 mb-3">
+              <div className="col-lg-4">
+                <TopCompanies data={analytics.topCompanies} />
+              </div>
+              <div className="col-lg-4">
+                <TopHosts data={analytics.topHosts} />
+              </div>
+              <div className="col-lg-4">
+                <HourlyDistribution data={analytics.hourlyDistribution} />
+              </div>
+            </div>
+            <div className="row g-3">
+              <div className="col-lg-12">
+                <PurposeBreakdown data={analytics.purposeBreakdown} />
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="text-center text-muted py-5">
+            <p className="mb-1">No analytics data for the last 7 days.</p>
+            <p className="small">Charts will appear once visitor records exist.</p>
+          </div>
         )}
       </div>
 

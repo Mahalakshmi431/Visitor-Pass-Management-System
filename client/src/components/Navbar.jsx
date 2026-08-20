@@ -1,5 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import useAuth from "../hooks/useAuth";
+import NotificationBell from "./NotificationBell";
 
 function Navbar() {
   const { user, logout, isAdmin } = useAuth();
@@ -54,15 +55,33 @@ function Navbar() {
           </ul>
 
           {user && (
-            <div className="d-flex align-items-center gap-3">
-              <div className="text-end text-light">
-                <div className="fw-semibold small">{user.name}</div>
-                <span className={`badge ${getRoleBadgeColor(user.role)} small`}>
-                  {user.role}
-                </span>
+            <div className="d-flex align-items-center gap-2">
+              <NotificationBell />
+
+              <Link to="/profile" className="text-white text-decoration-none d-flex align-items-center gap-2" title="My Profile">
+                <div className="text-end">
+                  <div className="fw-semibold small">{user.name}</div>
+                  <span className={`badge ${getRoleBadgeColor(user.role)} small`}>
+                    {user.role}
+                  </span>
+                </div>
+              </Link>
+
+              <div className="dropdown">
+                <button className="btn btn-link text-white p-1 text-decoration-none dropdown-toggle" data-bs-toggle="dropdown" data-bs-auto-close="true" title="Account settings">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="1" /><circle cx="12" cy="5" r="1" /><circle cx="12" cy="19" r="1" />
+                  </svg>
+                </button>
+                <ul className="dropdown-menu dropdown-menu-end">
+                  <li><Link className="dropdown-item" to="/profile">My Profile</Link></li>
+                  <li><Link className="dropdown-item" to="/change-password">Change Password</Link></li>
+                  <li><hr className="dropdown-divider" /></li>
+                  <li><button className="dropdown-item text-danger" onClick={handleLogout}>Logout</button></li>
+                </ul>
               </div>
 
-              <button onClick={handleLogout} className="btn btn-outline-danger btn-sm px-3">
+              <button onClick={handleLogout} className="btn btn-outline-danger btn-sm px-3 d-none d-lg-inline-block">
                 Logout
               </button>
             </div>

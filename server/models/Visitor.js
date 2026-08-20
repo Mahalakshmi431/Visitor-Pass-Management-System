@@ -86,4 +86,15 @@ const visitorSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+visitorSchema.index({ status: 1, visitDate: -1 });
+visitorSchema.index({ status: 1, employee: 1 });
+visitorSchema.index({ employee: 1, status: 1 });
+visitorSchema.index({ email: 1, phone: 1 });
+visitorSchema.index({ status: 1 });
+visitorSchema.index({ employeeName: 1 });
+visitorSchema.index({ company: 1 });
+visitorSchema.index({ purpose: 1 });
+visitorSchema.index({ visitDate: 1, status: 1 });
+visitorSchema.index({ createdAt: -1 });
+
 module.exports = mongoose.model("Visitor", visitorSchema);

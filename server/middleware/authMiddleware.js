@@ -18,11 +18,13 @@ const protect = async (req, res, next) => {
 
       req.user = await User.findById(decoded.id).select("-password");
       if (!req.user) {
-        // Fallback for mock in-memory user token
         req.user = decoded.user || decoded;
       }
       return next();
     } catch (error) {
+      if (error.name === "MongooseError" || error.name === "MongoServerError" || error.message.includes("buffering timed out")) {
+        return res.status(503).json({ message: "Service temporarily unavailable. Database connection issue." });
+      }
       return res.status(401).json({ message: "Not authorized, invalid token" });
     }
   }

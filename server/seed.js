@@ -14,6 +14,9 @@ const getTodayDateString = () => {
   return `${year}-${month}-${day}`;
 };
 
+const hoursAgo = (h) => new Date(Date.now() - h * 3600000);
+const hoursFromNow = (h) => new Date(Date.now() + h * 3600000);
+
 const users = [
   {
     name: "Admin User",
@@ -105,6 +108,94 @@ const sampleVisitors = [
     expectedTime: "14:00",
     status: "REJECTED",
   },
+  {
+    fullName: "Stanley Hudson",
+    email: "stanley.hudson@dundermifflin.com",
+    phone: "+1 555-0195",
+    company: "Dunder Mifflin",
+    govtIdType: "Driving License",
+    govtIdNumber: "DL-1965-0088",
+    purpose: "Monthly sales review presentation",
+    expectedTime: "09:00",
+    status: "CHECKED_OUT",
+  },
+  {
+    fullName: "Phyllis Vance",
+    email: "phyllis.vance@vance-refrigeration.com",
+    phone: "+1 555-0196",
+    company: "Vance Refrigeration",
+    govtIdType: "Passport",
+    govtIdNumber: "P-5567-1122",
+    purpose: "HVAC maintenance annual contract renewal",
+    expectedTime: "09:30",
+    status: "CHECKED_IN",
+  },
+  {
+    fullName: "Kevin Malone",
+    email: "kevin.malone@dundermifflin.com",
+    phone: "+1 555-0197",
+    company: "Dunder Mifflin",
+    govtIdType: "Aadhaar Card",
+    govtIdNumber: "XXXX-9988-7766",
+    purpose: "Warehouse inventory check",
+    expectedTime: "10:00",
+    status: "APPROVED",
+  },
+  {
+    fullName: "Oscar Martinez",
+    email: "oscar.martinez@dundermifflin.com",
+    phone: "+1 555-0198",
+    company: "Dunder Mifflin",
+    govtIdType: "Voter ID",
+    govtIdNumber: "VID-334455",
+    purpose: "Quarterly financial audit walkthrough",
+    expectedTime: "11:30",
+    status: "PENDING",
+  },
+  {
+    fullName: "Creed Bratton",
+    email: "creed.bratton@creedthoughts.com",
+    phone: "+1 555-0199",
+    company: "Creed Thoughts",
+    govtIdType: "Passport",
+    govtIdNumber: "P-1100-9988",
+    purpose: "Quality assurance compliance review",
+    expectedTime: "14:30",
+    status: "REJECTED",
+  },
+  {
+    fullName: "Meredith Palmer",
+    email: "meredith.palmer@vendor.net",
+    phone: "+1 555-0200",
+    company: "Vendor Relations LLC",
+    govtIdType: "Driving License",
+    govtIdNumber: "DL-1988-5566",
+    purpose: "Supplier agreement renegotiation",
+    expectedTime: "15:00",
+    status: "CANCELLED",
+  },
+  {
+    fullName: "Ryan Howard",
+    email: "ryan.howard@dundermifflin.com",
+    phone: "+1 555-0201",
+    company: "WUPHF.com",
+    govtIdType: "Aadhaar Card",
+    govtIdNumber: "XXXX-5544-3322",
+    purpose: "Startup pitch meeting for WUPHF integration",
+    expectedTime: "15:30",
+    status: "PENDING",
+  },
+  {
+    fullName: "Toby Flenderson",
+    email: "toby.flenderson@dundermifflin.com",
+    phone: "+1 555-0202",
+    company: "Dunder Mifflin",
+    govtIdType: "Passport",
+    govtIdNumber: "P-7744-2211",
+    purpose: "HR policy review and employee handbook update",
+    expectedTime: "16:00",
+    status: "CHECKED_OUT",
+  },
 ];
 
 const seed = async () => {
@@ -147,8 +238,13 @@ const seed = async () => {
     const nextNum = String(count + 1).padStart(3, "0");
     const passCode = `VP-${today.replace(/-/g, "")}-${nextNum}`;
 
-    const employee = v.fullName === "Angela Martin" ? employeeHr : employeeEng;
+    const employee = v.fullName === "Angela Martin" || v.fullName === "Toby Flenderson"
+      ? employeeHr
+      : employeeEng;
     const createdBy = receptionist || admin;
+
+    const isCheckedIn = v.status === "CHECKED_IN" || v.status === "CHECKED_OUT";
+    const isCheckedOut = v.status === "CHECKED_OUT";
 
     const visitor = await Visitor.create({
       passCode,
@@ -166,9 +262,13 @@ const seed = async () => {
       status: v.status,
       createdBy: createdBy._id,
       createdByName: createdBy.name,
-      remarks: v.status === "REJECTED" ? "Host unavailable on requested date" : "",
-      checkInTime: v.status === "CHECKED_IN" || v.status === "CHECKED_OUT" ? new Date() : null,
-      checkOutTime: v.status === "CHECKED_OUT" ? new Date() : null,
+      remarks: v.status === "REJECTED"
+        ? "Host unavailable on requested date"
+        : v.status === "CANCELLED"
+        ? "Visit no longer needed"
+        : "",
+      checkInTime: isCheckedIn ? hoursAgo(3) : null,
+      checkOutTime: isCheckedOut ? hoursAgo(1) : null,
     });
 
     await ActivityLog.create({
@@ -179,7 +279,73 @@ const seed = async () => {
       performedById: createdBy._id,
       performedByRole: createdBy.role,
       remarks: `Seeded sample visitor ${v.fullName}`,
+      timestamp: hoursAgo(5),
     });
+
+    if (v.status === "APPROVED" || v.status === "CHECKED_IN" || v.status === "CHECKED_OUT") {
+      await ActivityLog.create({
+        visitorId: visitor._id,
+        passCode: visitor.passCode,
+        action: "APPROVED",
+        performedBy: employee.name,
+        performedById: employee._id,
+        performedByRole: employee.role,
+        remarks: "Approved by host",
+        timestamp: hoursAgo(4),
+      });
+    }
+
+    if (v.status === "REJECTED") {
+      await ActivityLog.create({
+        visitorId: visitor._id,
+        passCode: visitor.passCode,
+        action: "REJECTED",
+        performedBy: employee.name,
+        performedById: employee._id,
+        performedByRole: employee.role,
+        remarks: "Host unavailable on requested date",
+        timestamp: hoursAgo(4),
+      });
+    }
+
+    if (v.status === "CANCELLED") {
+      await ActivityLog.create({
+        visitorId: visitor._id,
+        passCode: visitor.passCode,
+        action: "CANCELLED",
+        performedBy: createdBy.name,
+        performedById: createdBy._id,
+        performedByRole: createdBy.role,
+        remarks: "Visit no longer needed",
+        timestamp: hoursAgo(2),
+      });
+    }
+
+    if (isCheckedIn) {
+      await ActivityLog.create({
+        visitorId: visitor._id,
+        passCode: visitor.passCode,
+        action: "CHECKED_IN",
+        performedBy: createdBy.name,
+        performedById: createdBy._id,
+        performedByRole: createdBy.role,
+        remarks: `Checked in at ${visitor.checkInTime.toLocaleTimeString()}`,
+        timestamp: hoursAgo(3),
+      });
+    }
+
+    if (isCheckedOut) {
+      await ActivityLog.create({
+        visitorId: visitor._id,
+        passCode: visitor.passCode,
+        action: "CHECKED_OUT",
+        performedBy: createdBy.name,
+        performedById: createdBy._id,
+        performedByRole: createdBy.role,
+        remarks: `Checked out at ${visitor.checkOutTime.toLocaleTimeString()}`,
+        timestamp: hoursAgo(1),
+      });
+    }
 
     created += 1;
     console.log(`Created visitor: ${visitor.passCode} (${v.fullName} - ${v.status})`);

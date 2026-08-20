@@ -9,6 +9,7 @@ import VisitorDetails from "../pages/VisitorDetails";
 import UserManagement from "../pages/UserManagement";
 import Reports from "../pages/Reports";
 import Profile from "../pages/Profile";
+import ChangePassword from "../pages/ChangePassword";
 import NotFound from "../pages/NotFound";
 
 import ProtectedRoute from "../components/ProtectedRoute";
@@ -43,17 +44,13 @@ function AppRoutes() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/visitors" element={<VisitorList />} />
 
-          {/* Receptionist & Admin registration route */}
-          <Route
-            element={<ProtectedRoute allowedRoles={["Receptionist", "Administrator"]} />}
-          >
-            <Route path="/visitors/new" element={<AddVisitor />} />
-            <Route path="/visitors/:id/edit" element={<EditVisitor />} />
-          </Route>
+          <Route path="/visitors/new" element={<AddVisitor />} />
+          <Route path="/visitors/:id/edit" element={<EditVisitor />} />
 
           <Route path="/visitors/:id" element={<VisitorDetails />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/change-password" element={<ChangePassword />} />
 
           {/* Admin User Management route */}
           <Route element={<ProtectedRoute allowedRoles={["Administrator"]} />}>

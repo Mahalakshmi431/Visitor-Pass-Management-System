@@ -21,6 +21,7 @@ app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/users", require("./routes/userRoutes"));
 app.use("/api/visitors", require("./routes/visitorRoutes"));
 app.use("/api", require("./routes/reportRoutes"));
+app.use("/api/notifications", require("./routes/notificationRoutes"));
 
 // Error Handlers
 app.use(notFound);
