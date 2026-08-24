@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import useAuth from "../hooks/useAuth";
 import api from "../services/api";
+import { getPreferencesApi, updatePreferencesApi } from "../services/notificationService";
 
 function Profile() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [editing, setEditing] = useState(false);
   const [formData, setFormData] = useState({
     name: user?.name || "",
@@ -12,6 +13,11 @@ function Profile() {
     department: user?.department || "",
   });
   const [saveMsg, setSaveMsg] = useState("");
+  const [prefs, setPrefs] = useState(null);
+
+  useEffect(() => {
+    getPreferencesApi().then(setPrefs).catch(() => {});
+  }, []);
 
   if (!user) return null;
 
@@ -22,8 +28,9 @@ function Profile() {
   const handleSave = async () => {
     try {
       await api.put("/auth/update-profile", formData);
+      await refreshUser();
       setEditing(false);
-      setSaveMsg("Profile updated. Refresh to see changes.");
+      setSaveMsg("Profile updated successfully.");
       setTimeout(() => setSaveMsg(""), 3000);
     } catch {
       setSaveMsg("");
@@ -94,6 +101,45 @@ function Profile() {
                     <button className="btn btn-outline-primary btn-sm flex-grow-1" onClick={() => setEditing(true)}>Edit Profile</button>
                     <Link to="/change-password" className="btn btn-outline-warning btn-sm flex-grow-1">Change Password</Link>
                   </div>
+
+                  {prefs && (
+                    <div className="border-top pt-3 mt-3">
+                      <div className="d-flex align-items-center justify-content-between mb-2">
+                        <span className="small fw-bold text-muted text-uppercase">Quick Notification Toggles</span>
+                        <Link to="/notification-settings" className="small text-primary text-decoration-none">Manage All</Link>
+                      </div>
+                      <div className="d-flex gap-3">
+                        <div className="form-check form-switch">
+                          <input
+                            className="form-check-input"
+                            type="checkbox"
+                            checked={prefs.emailEnabled}
+                            onChange={async () => {
+                              const prev = prefs;
+                              const updated = { ...prefs, emailEnabled: !prefs.emailEnabled };
+                              setPrefs(updated);
+                              try { await updatePreferencesApi(updated); } catch { setPrefs(prev); }
+                            }}
+                          />
+                          <label className="form-check-label small">Email</label>
+                        </div>
+                        <div className="form-check form-switch">
+                          <input
+                            className="form-check-input"
+                            type="checkbox"
+                            checked={prefs.smsEnabled}
+                            onChange={async () => {
+                              const prev = prefs;
+                              const updated = { ...prefs, smsEnabled: !prefs.smsEnabled };
+                              setPrefs(updated);
+                              try { await updatePreferencesApi(updated); } catch { setPrefs(prev); }
+                            }}
+                          />
+                          <label className="form-check-label small">SMS</label>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
             </div>

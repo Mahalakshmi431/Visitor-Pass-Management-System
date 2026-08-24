@@ -26,7 +26,13 @@ api.interceptors.request.use(
 // stuck on an "authentication error". The login endpoint is excluded: there a
 // 401 means wrong credentials and must still surface the server message.
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    const body = response.data;
+    if (body && typeof body === "object" && "success" in body) {
+      response.data = body.data !== undefined ? body.data : body;
+    }
+    return response;
+  },
   (error) => {
     const status = error.response?.status;
     const url = error.config?.url || "";

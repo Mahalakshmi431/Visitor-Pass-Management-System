@@ -129,9 +129,12 @@ describe("Login validation", () => {
 
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
-        _id: "u001",
-        name: "Test User",
-        token: expect.any(String),
+        success: true,
+        data: expect.objectContaining({
+          _id: "u001",
+          name: "Test User",
+          token: expect.any(String),
+        }),
       })
     );
   });

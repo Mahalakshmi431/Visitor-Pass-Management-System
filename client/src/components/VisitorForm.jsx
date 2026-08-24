@@ -79,11 +79,11 @@ function VisitorForm({ onSubmit, loading, error }) {
     if (!formData.employeeId) errors.employeeId = "Please select an employee to visit";
 
     if (!formData.visitDate) errors.visitDate = "Visit date is required";
-    else if (formData.visitDate < todayStr) errors.visitDate = "Rule 3: Visit date cannot be in the past";
+    else if (formData.visitDate < todayStr) errors.visitDate = "Visit date cannot be in the past";
 
     if (!formData.expectedTime) errors.expectedTime = "Arrival time is required";
     else if (formData.visitDate === todayStr && formData.expectedTime < currentTimeStr) {
-      errors.expectedTime = "Rule 4: Arrival time cannot be in the past for today";
+      errors.expectedTime = "Arrival time cannot be in the past for today";
     }
 
     if (!formData.purpose.trim()) errors.purpose = "Purpose of visit is required";
@@ -232,7 +232,7 @@ function VisitorForm({ onSubmit, loading, error }) {
               {fieldErrors.employeeId && <div className="invalid-feedback">{fieldErrors.employeeId}</div>}
             </>
           )}
-          <div className="form-text">Rule 5: Each employee can have at most 3 pending requests.</div>
+          <div className="form-text">Each employee can have at most 3 pending requests at a time.</div>
         </div>
 
         <div className="col-md-4">

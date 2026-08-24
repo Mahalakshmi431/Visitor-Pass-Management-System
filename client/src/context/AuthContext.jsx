@@ -15,6 +15,16 @@ export function AuthProvider({ children }) {
     setUser(null);
   }, []);
 
+  const refreshUser = useCallback(async () => {
+    try {
+      const userData = await getMeApi();
+      setUser(userData);
+      return userData;
+    } catch {
+      return null;
+    }
+  }, []);
+
   useEffect(() => {
     const loadUser = async () => {
       if (token) {
@@ -51,6 +61,7 @@ export function AuthProvider({ children }) {
         loading,
         login,
         logout,
+        refreshUser,
         isAdmin,
         isReceptionist,
         isEmployee,

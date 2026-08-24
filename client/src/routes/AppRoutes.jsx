@@ -10,6 +10,7 @@ import UserManagement from "../pages/UserManagement";
 import Reports from "../pages/Reports";
 import Profile from "../pages/Profile";
 import ChangePassword from "../pages/ChangePassword";
+import NotificationSettings from "../pages/NotificationSettings";
 import NotFound from "../pages/NotFound";
 
 import ProtectedRoute from "../components/ProtectedRoute";
@@ -51,6 +52,7 @@ function AppRoutes() {
           <Route path="/reports" element={<Reports />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/change-password" element={<ChangePassword />} />
+          <Route path="/notification-settings" element={<NotificationSettings />} />
 
           {/* Admin User Management route */}
           <Route element={<ProtectedRoute allowedRoles={["Administrator"]} />}>

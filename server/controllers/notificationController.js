@@ -1,4 +1,5 @@
 const Notification = require("../models/Notification");
+const { sendSuccess, sendError } = require("../utils/responseHelper");
 
 // @desc Get notifications for current user
 // @route GET /api/notifications
@@ -15,7 +16,7 @@ const getNotifications = async (req, res, next) => {
 
     const unreadCount = await Notification.countDocuments({ recipient: req.user._id, isRead: false });
 
-    res.json({ notifications, unreadCount });
+    sendSuccess(res, { data: { notifications, unreadCount } });
   } catch (error) {
     next(error);
   }
@@ -26,7 +27,7 @@ const getNotifications = async (req, res, next) => {
 const getUnreadCount = async (req, res, next) => {
   try {
     const count = await Notification.countDocuments({ recipient: req.user._id, isRead: false });
-    res.json({ unreadCount: count });
+    sendSuccess(res, { data: { unreadCount: count } });
   } catch (error) {
     next(error);
   }
@@ -43,10 +44,10 @@ const markAsRead = async (req, res, next) => {
     );
 
     if (!notification) {
-      return res.status(404).json({ message: "Notification not found" });
+      return sendError(res, { message: "Notification not found", statusCode: 404 });
     }
 
-    res.json(notification);
+    sendSuccess(res, { message: "Notification marked as read", data: notification });
   } catch (error) {
     next(error);
   }
@@ -60,7 +61,7 @@ const markAllAsRead = async (req, res, next) => {
       { recipient: req.user._id, isRead: false },
       { isRead: true }
     );
-    res.json({ message: "All notifications marked as read" });
+    sendSuccess(res, { message: "All notifications marked as read" });
   } catch (error) {
     next(error);
   }
@@ -76,10 +77,10 @@ const deleteNotification = async (req, res, next) => {
     });
 
     if (!notification) {
-      return res.status(404).json({ message: "Notification not found" });
+      return sendError(res, { message: "Notification not found", statusCode: 404 });
     }
 
-    res.json({ message: "Notification deleted" });
+    sendSuccess(res, { message: "Notification deleted" });
   } catch (error) {
     next(error);
   }
@@ -90,7 +91,7 @@ const deleteNotification = async (req, res, next) => {
 const clearAll = async (req, res, next) => {
   try {
     await Notification.deleteMany({ recipient: req.user._id });
-    res.json({ message: "All notifications cleared" });
+    sendSuccess(res, { message: "All notifications cleared" });
   } catch (error) {
     next(error);
   }

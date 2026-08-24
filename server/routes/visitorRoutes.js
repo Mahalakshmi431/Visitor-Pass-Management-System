@@ -29,6 +29,6 @@ router.put("/:id/reject", authorizeRoles("Employee", "Administrator"), rejectVis
 
 router.put("/:id/checkin", authorizeRoles("Receptionist", "Administrator"), checkInVisitor);
 router.put("/:id/checkout", authorizeRoles("Receptionist", "Administrator"), checkOutVisitor);
-router.put("/:id/cancel", authorizeRoles("Receptionist", "Administrator"), cancelVisitor);
+router.put("/:id/cancel", authorizeRoles("Receptionist", "Administrator", "Employee"), cancelVisitor);
 
 module.exports = router;

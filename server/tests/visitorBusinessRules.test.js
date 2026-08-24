@@ -25,6 +25,7 @@ const {
   checkInVisitor,
   checkOutVisitor,
   cancelVisitor,
+  bulkOperation,
 } = require("../controllers/visitorController");
 
 beforeEach(() => {
@@ -632,7 +633,7 @@ describe("Rule 10: Cancelled visits excluded from active list", () => {
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({
-        message: expect.stringContaining("Cannot cancel a completed/checked-out visit"),
+        message: expect.stringContaining("Cannot cancel: visit is already completed"),
       })
     );
   });
@@ -891,10 +892,12 @@ describe("Visitor not found handling", () => {
     };
     chainMock[Symbol.for("jest.mock.details")] = undefined;
 
-    // Mock findById to return a thenable that resolves to null
+    // Mock findById to return a chainable that resolves to null through .lean()
     Visitor.findById = jest.fn().mockReturnValue({
       populate: jest.fn().mockReturnValue({
-        populate: jest.fn().mockResolvedValue(null),
+        populate: jest.fn().mockReturnValue({
+          lean: jest.fn().mockResolvedValue(null),
+        }),
       }),
     });
 
@@ -923,5 +926,360 @@ describe("Visitor not found handling", () => {
     await checkInVisitor(req, res, createMockNext);
 
     expect(res.status).toHaveBeenCalledWith(404);
+  });
+});
+
+// ============================================================
+// Bulk Operation: allowedRoles enforcement
+// ============================================================
+describe("Bulk Operations: allowedRoles enforcement", () => {
+  test("Should reject bulk approve by Receptionist (not in allowedRoles)", async () => {
+    const req = createMockReq({
+      params: { action: "approve" },
+      body: { ids: ["v001"] },
+      user: { _id: "rec001", name: "Receptionist User", role: "Receptionist" },
+    });
+    const res = createMockRes();
+
+    await bulkOperation(req, res, createMockNext);
+
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: expect.stringContaining("not authorized for bulk approve"),
+      })
+    );
+  });
+
+  test("Should reject bulk checkin by Employee (not in allowedRoles)", async () => {
+    const req = createMockReq({
+      params: { action: "checkin" },
+      body: { ids: ["v001"] },
+      user: { _id: "emp001", name: "Emp User", role: "Employee" },
+    });
+    const res = createMockRes();
+
+    await bulkOperation(req, res, createMockNext);
+
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: expect.stringContaining("not authorized for bulk checkin"),
+      })
+    );
+  });
+
+  test("Should allow bulk approve by Administrator", async () => {
+    const req = createMockReq({
+      params: { action: "approve" },
+      body: { ids: ["v001"] },
+      user: { _id: "admin001", name: "Admin User", role: "Administrator" },
+    });
+    const res = createMockRes();
+
+    const mockVisitor = {
+      _id: "v001",
+      email: "test@example.com",
+      phone: "1234567890",
+      employee: "emp001",
+      status: "PENDING",
+      passCode: "VP-20260822-001",
+      save: jest.fn(),
+    };
+    Visitor.find = jest.fn()
+      .mockResolvedValueOnce([mockVisitor])
+      .mockReturnValueOnce({ select: jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue([]) }) });
+    Visitor.aggregate = jest.fn().mockResolvedValue([]);
+    Visitor.bulkWrite = jest.fn().mockResolvedValue({ modifiedCount: 1 });
+    ActivityLog.insertMany = jest.fn().mockResolvedValue([]);
+
+    await bulkOperation(req, res, createMockNext);
+
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: expect.stringContaining("1 succeeded"),
+      })
+    );
+  });
+});
+
+// ============================================================
+// Bulk Operation: duplicate ID dedup
+// ============================================================
+describe("Bulk Operations: duplicate ID deduplication", () => {
+  test("Should deduplicate duplicate IDs in request", async () => {
+    const req = createMockReq({
+      params: { action: "approve" },
+      body: { ids: ["v001", "v001", "v001"] },
+      user: { _id: "admin001", name: "Admin", role: "Administrator" },
+    });
+    const res = createMockRes();
+
+    const mockVisitor = {
+      _id: "v001",
+      email: "test@example.com",
+      phone: "1234567890",
+      employee: "emp001",
+      status: "PENDING",
+      passCode: "VP-20260822-001",
+      save: jest.fn(),
+    };
+    Visitor.find = jest.fn()
+      .mockResolvedValueOnce([mockVisitor])
+      .mockReturnValueOnce({ select: jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue([]) }) });
+    Visitor.aggregate = jest.fn().mockResolvedValue([]);
+    Visitor.bulkWrite = jest.fn().mockResolvedValue({ modifiedCount: 1 });
+    ActivityLog.insertMany = jest.fn().mockResolvedValue([]);
+
+    await bulkOperation(req, res, createMockNext);
+
+    expect(Visitor.find).toHaveBeenCalledWith({ _id: { $in: ["v001"] } });
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: expect.stringContaining("1 succeeded"),
+      })
+    );
+  });
+
+  test("Should report not-found IDs in results", async () => {
+    const req = createMockReq({
+      params: { action: "approve" },
+      body: { ids: ["v001", "v999"] },
+      user: { _id: "admin001", name: "Admin", role: "Administrator" },
+    });
+    const res = createMockRes();
+
+    const mockVisitor = {
+      _id: "v001",
+      email: "test@example.com",
+      phone: "1234567890",
+      employee: "emp001",
+      status: "PENDING",
+      passCode: "VP-20260822-001",
+      save: jest.fn(),
+    };
+    Visitor.find = jest.fn()
+      .mockResolvedValueOnce([mockVisitor])
+      .mockReturnValueOnce({ select: jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue([]) }) });
+    Visitor.aggregate = jest.fn().mockResolvedValue([]);
+    Visitor.bulkWrite = jest.fn().mockResolvedValue({ modifiedCount: 1 });
+    ActivityLog.insertMany = jest.fn().mockResolvedValue([]);
+
+    await bulkOperation(req, res, createMockNext);
+
+    const result = res.json.mock.calls[0][0];
+    expect(result.data.failed).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "v999", reason: "Visitor not found" }),
+      ])
+    );
+  });
+});
+
+// ============================================================
+// Bulk Operation: Employee ownership check for reject/approve
+// ============================================================
+describe("Bulk Operations: Employee ownership enforcement", () => {
+  test("Should reject bulk approve for visitor assigned to another employee", async () => {
+    const req = createMockReq({
+      params: { action: "approve" },
+      body: { ids: ["v001"] },
+      user: { _id: "emp001", name: "Emp One", role: "Employee" },
+    });
+    const res = createMockRes();
+
+    const mockVisitor = {
+      _id: "v001",
+      email: "test@example.com",
+      phone: "1234567890",
+      employee: "emp999",
+      status: "PENDING",
+      passCode: "VP-20260822-001",
+      save: jest.fn(),
+    };
+    Visitor.find = jest.fn()
+      .mockResolvedValueOnce([mockVisitor])
+      .mockReturnValueOnce({ select: jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue([]) }) });
+    Visitor.aggregate = jest.fn().mockResolvedValue([]);
+
+    await bulkOperation(req, res, createMockNext);
+
+    const result = res.json.mock.calls[0][0];
+    expect(result.data.failed).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ reason: "Not authorized to approve this visitor" }),
+      ])
+    );
+  });
+
+  test("Should reject bulk reject for visitor assigned to another employee", async () => {
+    const req = createMockReq({
+      params: { action: "reject" },
+      body: { ids: ["v001"] },
+      user: { _id: "emp001", name: "Emp One", role: "Employee" },
+    });
+    const res = createMockRes();
+
+    const mockVisitor = {
+      _id: "v001",
+      email: "test@example.com",
+      phone: "1234567890",
+      employee: "emp999",
+      status: "PENDING",
+      passCode: "VP-20260822-001",
+      save: jest.fn(),
+    };
+    Visitor.find = jest.fn().mockResolvedValue([mockVisitor]);
+
+    await bulkOperation(req, res, createMockNext);
+
+    const result = res.json.mock.calls[0][0];
+    expect(result.data.failed).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ reason: "Not authorized to reject this visitor" }),
+      ])
+    );
+  });
+});
+
+// ============================================================
+// Cancel Visitor: Employee ownership check
+// ============================================================
+describe("Cancel Visitor: Employee ownership enforcement", () => {
+  test("Should reject cancel by Employee for visitor assigned to another employee", async () => {
+    const req = createMockReq({
+      params: { id: "v001" },
+      user: { _id: "emp001", name: "Emp One", role: "Employee" },
+    });
+    const res = createMockRes();
+
+    Visitor.findById = jest.fn().mockResolvedValue({
+      _id: "v001",
+      status: "PENDING",
+      employee: "emp999",
+    });
+
+    await cancelVisitor(req, res, createMockNext);
+
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: expect.stringContaining("not authorized to cancel"),
+      })
+    );
+  });
+
+  test("Should allow cancel by Employee for their own visitor", async () => {
+    const req = createMockReq({
+      params: { id: "v001" },
+      user: { _id: "emp001", name: "Emp One", role: "Employee" },
+    });
+    const res = createMockRes();
+
+    const mockVisitor = {
+      _id: "v001",
+      status: "PENDING",
+      employee: "emp001",
+      passCode: "VP-20260822-001",
+      save: jest.fn(),
+    };
+    Visitor.findById = jest.fn().mockResolvedValue(mockVisitor);
+
+    await cancelVisitor(req, res, createMockNext);
+
+    expect(mockVisitor.status).toBe("CANCELLED");
+    expect(mockVisitor.save).toHaveBeenCalled();
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ message: "Visitor pass cancelled" })
+    );
+  });
+
+  test("Should allow cancel by Receptionist for any visitor", async () => {
+    const req = createMockReq({
+      params: { id: "v001" },
+      user: { _id: "rec001", name: "Rec One", role: "Receptionist" },
+    });
+    const res = createMockRes();
+
+    const mockVisitor = {
+      _id: "v001",
+      status: "PENDING",
+      employee: "emp999",
+      passCode: "VP-20260822-001",
+      save: jest.fn(),
+    };
+    Visitor.findById = jest.fn().mockResolvedValue(mockVisitor);
+
+    await cancelVisitor(req, res, createMockNext);
+
+    expect(mockVisitor.status).toBe("CANCELLED");
+    expect(mockVisitor.save).toHaveBeenCalled();
+  });
+});
+
+// ============================================================
+// getVisitors: status + includeCancelled filter fix
+// ============================================================
+describe("getVisitors: status + includeCancelled filter interaction", () => {
+  test("Should filter by exact status when status param is provided", async () => {
+    const req = createMockReq({ query: { status: "CHECKED_IN" } });
+    const res = createMockRes();
+
+    Visitor.find = jest.fn().mockReturnValue({
+      populate: jest.fn().mockReturnThis(),
+      sort: jest.fn().mockResolvedValue([]),
+    });
+
+    await getVisitors(req, res, createMockNext);
+
+    expect(Visitor.find).toHaveBeenCalledWith(
+      expect.objectContaining({ status: "CHECKED_IN" })
+    );
+  });
+
+  test("Should not add $ne CANCELLED when status is explicitly provided", async () => {
+    const req = createMockReq({ query: { status: "CANCELLED", includeCancelled: "true" } });
+    const res = createMockRes();
+
+    Visitor.find = jest.fn().mockReturnValue({
+      populate: jest.fn().mockReturnThis(),
+      sort: jest.fn().mockResolvedValue([]),
+    });
+
+    await getVisitors(req, res, createMockNext);
+
+    expect(Visitor.find).toHaveBeenCalledWith(
+      expect.objectContaining({ status: "CANCELLED" })
+    );
+  });
+
+  test("Should exclude CANCELLED by default when no status param", async () => {
+    const req = createMockReq({ query: {} });
+    const res = createMockRes();
+
+    Visitor.find = jest.fn().mockReturnValue({
+      populate: jest.fn().mockReturnThis(),
+      sort: jest.fn().mockResolvedValue([]),
+    });
+
+    await getVisitors(req, res, createMockNext);
+
+    expect(Visitor.find).toHaveBeenCalledWith(
+      expect.objectContaining({ status: { $ne: "CANCELLED" } })
+    );
+  });
+
+  test("Should include CANCELLED when includeCancelled=true and no status", async () => {
+    const req = createMockReq({ query: { includeCancelled: "true" } });
+    const res = createMockRes();
+
+    Visitor.find = jest.fn().mockReturnValue({
+      populate: jest.fn().mockReturnThis(),
+      sort: jest.fn().mockResolvedValue([]),
+    });
+
+    await getVisitors(req, res, createMockNext);
+
+    expect(Visitor.find).toHaveBeenCalledWith({});
   });
 });

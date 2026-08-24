@@ -22,6 +22,7 @@ app.use("/api/users", require("./routes/userRoutes"));
 app.use("/api/visitors", require("./routes/visitorRoutes"));
 app.use("/api", require("./routes/reportRoutes"));
 app.use("/api/notifications", require("./routes/notificationRoutes"));
+app.use("/api/notifications", require("./routes/notificationPreferenceRoutes"));
 
 // Error Handlers
 app.use(notFound);

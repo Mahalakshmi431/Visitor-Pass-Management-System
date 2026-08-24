@@ -9,8 +9,9 @@ const errorHandler = (err, req, res, next) => {
   console.error(`Error (${statusCode}): ${message}`);
 
   res.status(statusCode).json({
+    success: false,
     message,
-    stack: process.env.NODE_ENV === "production" ? null : err.stack,
+    data: process.env.NODE_ENV === "production" ? null : { stack: err.stack },
   });
 };
 

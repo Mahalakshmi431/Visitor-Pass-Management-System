@@ -29,3 +29,13 @@ export const clearAllNotificationsApi = async () => {
   const response = await api.delete("/notifications");
   return response.data;
 };
+
+export const getPreferencesApi = async () => {
+  const response = await api.get("/notifications/preferences");
+  return response.data;
+};
+
+export const updatePreferencesApi = async (data) => {
+  const response = await api.put("/notifications/preferences", data);
+  return response.data;
+};

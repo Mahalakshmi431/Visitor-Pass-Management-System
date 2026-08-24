@@ -1,6 +1,7 @@
 const Visitor = require("../models/Visitor");
 const User = require("../models/User");
 const ActivityLog = require("../models/ActivityLog");
+const { sendSuccess, sendError } = require("../utils/responseHelper");
 
 const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -128,7 +129,7 @@ const getDashboardStats = async (req, res, next) => {
       };
     }
 
-    res.json(stats);
+    sendSuccess(res, { data: stats });
   } catch (error) {
     next(error);
   }
@@ -157,20 +158,30 @@ const getVisitorReport = async (req, res, next) => {
 
     buildAdvancedFilters(query, req.query);
 
-    const visitors = await Visitor.find(query)
-      .populate("employee", "name email department")
-      .sort({ visitDate: -1, createdAt: -1 });
+    const [visitors, summaryResult] = await Promise.all([
+      Visitor.find(query)
+        .select("passCode fullName email phone company employee employeeName visitDate expectedTime purpose status remarks checkInTime checkOutTime createdAt")
+        .populate("employee", "name email department")
+        .sort({ visitDate: -1, createdAt: -1 })
+        .lean(),
+      Visitor.aggregate([
+        { $match: query },
+        { $group: {
+          _id: null,
+          total: { $sum: 1 },
+          pending: { $sum: { $cond: [{ $eq: ["$status", "PENDING"] }, 1, 0] } },
+          approved: { $sum: { $cond: [{ $eq: ["$status", "APPROVED"] }, 1, 0] } },
+          rejected: { $sum: { $cond: [{ $eq: ["$status", "REJECTED"] }, 1, 0] } },
+          checkedIn: { $sum: { $cond: [{ $eq: ["$status", "CHECKED_IN"] }, 1, 0] } },
+          checkedOut: { $sum: { $cond: [{ $eq: ["$status", "CHECKED_OUT"] }, 1, 0] } },
+        }},
+      ]),
+    ]);
 
-    const summary = {
-      total: visitors.length,
-      pending: visitors.filter((v) => v.status === "PENDING").length,
-      approved: visitors.filter((v) => v.status === "APPROVED").length,
-      rejected: visitors.filter((v) => v.status === "REJECTED").length,
-      checkedIn: visitors.filter((v) => v.status === "CHECKED_IN").length,
-      checkedOut: visitors.filter((v) => v.status === "CHECKED_OUT").length,
-    };
+    const raw = summaryResult[0] || { total: 0, pending: 0, approved: 0, rejected: 0, checkedIn: 0, checkedOut: 0 };
+    const summary = { total: raw.total, pending: raw.pending, approved: raw.approved, rejected: raw.rejected, checkedIn: raw.checkedIn, checkedOut: raw.checkedOut };
 
-    res.json({ summary, visitors });
+    sendSuccess(res, { data: { summary, visitors } });
   } catch (error) {
     next(error);
   }
@@ -180,8 +191,12 @@ const getVisitorReport = async (req, res, next) => {
 // @route GET /api/reports/activity-logs
 const getActivityLogs = async (req, res, next) => {
   try {
-    const logs = await ActivityLog.find({}).sort({ timestamp: -1 }).limit(100);
-    res.json(logs);
+    const logs = await ActivityLog.find({})
+      .select("visitorId passCode action performedBy performedByRole remarks timestamp")
+      .sort({ timestamp: -1 })
+      .limit(100)
+      .lean();
+    sendSuccess(res, { data: logs });
   } catch (error) {
     next(error);
   }
@@ -266,14 +281,16 @@ const getAnalytics = async (req, res, next) => {
 
     const totalVisitors = dailyResult.reduce((sum, d) => sum + d.total, 0);
 
-    res.json({
-      statusDistribution,
-      dailyTrend,
-      topCompanies,
-      topHosts,
-      hourlyDistribution,
-      purposeBreakdown,
-      totalVisitors,
+    sendSuccess(res, {
+      data: {
+        statusDistribution,
+        dailyTrend,
+        topCompanies,
+        topHosts,
+        hourlyDistribution,
+        purposeBreakdown,
+        totalVisitors,
+      },
     });
   } catch (error) {
     next(error);
@@ -284,14 +301,27 @@ const getAnalytics = async (req, res, next) => {
 // @route GET /api/reports/filters
 const getFilterOptions = async (req, res, next) => {
   try {
-    const companies = await Visitor.distinct("company", { company: { $ne: "" } });
-    const hosts = await Visitor.distinct("employeeName", { employeeName: { $ne: "" } });
-    const purposes = await Visitor.distinct("purpose", { purpose: { $ne: "" } });
+    const result = await Visitor.aggregate([
+      { $match: { $or: [
+        { company: { $ne: "" } },
+        { employeeName: { $ne: "" } },
+        { purpose: { $ne: "" } },
+      ]}},
+      { $group: {
+        _id: null,
+        companies: { $addToSet: { $cond: [{ $ne: ["$company", ""] }, "$company", "$$REMOVE"] } },
+        hosts: { $addToSet: { $cond: [{ $ne: ["$employeeName", ""] }, "$employeeName", "$$REMOVE"] } },
+        purposes: { $addToSet: { $cond: [{ $ne: ["$purpose", ""] }, "$purpose", "$$REMOVE"] } },
+      }},
+    ]);
 
-    res.json({
-      companies: companies.sort(),
-      hosts: hosts.sort(),
-      purposes: purposes.sort(),
+    const raw = result[0] || { companies: [], hosts: [], purposes: [] };
+    sendSuccess(res, {
+      data: {
+        companies: raw.companies.sort(),
+        hosts: raw.hosts.sort(),
+        purposes: raw.purposes.sort(),
+      },
     });
   } catch (error) {
     next(error);

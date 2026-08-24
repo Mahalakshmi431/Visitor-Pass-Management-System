@@ -1,26 +1,42 @@
 const nodemailer = require("nodemailer");
 const Notification = require("../models/Notification");
 const User = require("../models/User");
+const NotificationPreference = require("../models/NotificationPreference");
 
 let emailTransporter = null;
+let etherealAccount = null;
 
-const getTransporter = () => {
+// --- Transporter Setup ---
+const getTransporter = async () => {
   if (emailTransporter) return emailTransporter;
-  if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
+
+  if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+    emailTransporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: parseInt(process.env.SMTP_PORT || "587", 10),
+      secure: process.env.SMTP_SECURE === "true",
+      auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+    });
+    return emailTransporter;
+  }
+
+  try {
+    etherealAccount = await nodemailer.createTestAccount();
+    emailTransporter = nodemailer.createTransport({
+      host: "smtp.ethereal.email",
+      port: 587,
+      secure: false,
+      auth: { user: etherealAccount.user, pass: etherealAccount.pass },
+    });
+    console.log("[Email] Using Ethereal test account:", etherealAccount.user);
+    return emailTransporter;
+  } catch (err) {
+    console.warn("[Email] Ethereal setup failed, email disabled:", err.message);
     return null;
   }
-  emailTransporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: parseInt(process.env.SMTP_PORT || "587", 10),
-    secure: process.env.SMTP_SECURE === "true",
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  });
-  return emailTransporter;
 };
 
+// --- Notification Templates ---
 const NOTIFICATION_TEMPLATES = {
   VISITOR_REGISTERED: (v) => ({
     title: "New Visitor Registration",
@@ -32,7 +48,7 @@ const NOTIFICATION_TEMPLATES = {
   }),
   VISITOR_REJECTED: (v) => ({
     title: "Visit Rejected",
-    message: `Your visit request from ${v.visitorName} has been rejected.${v.remarks ? ` Reason: ${v.remarks}` : ""}`,
+    message: `Your visit request from ${v.visitorName} has been rejected.${v.remarks ? " Reason: " + v.remarks : ""}`,
   }),
   VISITOR_CHECKED_IN: (v) => ({
     title: "Visitor Checked In",
@@ -64,11 +80,127 @@ const NOTIFICATION_TEMPLATES = {
   }),
 };
 
-const createNotification = async (recipientId, type, data = {}) => {
+// --- Email HTML Builder ---
+const buildEmailHtml = (title, message) => {
+  return '<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#f9fafb">'
+    + '<div style="background:linear-gradient(135deg,#1a1a2e,#16213e);color:white;padding:20px 24px;border-radius:12px 12px 0 0">'
+    + '<h2 style="margin:0;font-size:18px">Visitor Pass Management System</h2>'
+    + '</div>'
+    + '<div style="padding:24px;background:white;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px">'
+    + '<h3 style="color:#1a1a2e;margin:0 0 12px;font-size:16px">' + title + '</h3>'
+    + '<p style="color:#4b5563;line-height:1.7;font-size:14px;margin:0">' + message + '</p>'
+    + '<hr style="border:none;border-top:1px solid #e5e7eb;margin:20px 0" />'
+    + '<p style="color:#9ca3af;font-size:11px;margin:0">This is an automated notification from the Visitor Pass Management System. Do not reply to this email.</p>'
+    + '</div></div>';
+};
+
+// --- Preference Checks ---
+const shouldSendEmail = async (recipientId, type) => {
+  try {
+    const prefs = await NotificationPreference.findOne({ user: recipientId });
+    if (!prefs) return true;
+    return prefs.emailEnabled && prefs.emailTypes.includes(type);
+  } catch {
+    return true;
+  }
+};
+
+const shouldSendSms = async (recipientId, type) => {
+  try {
+    const prefs = await NotificationPreference.findOne({ user: recipientId });
+    if (!prefs) return false;
+    return prefs.smsEnabled && prefs.smsTypes.includes(type);
+  } catch {
+    return false;
+  }
+};
+
+// --- Employee Email Sender ---
+const sendEmailNotification = async (recipientId, subject, text, type) => {
+  const transporter = await getTransporter();
+  if (!transporter) return;
+
+  if (type && !(await shouldSendEmail(recipientId, type))) return;
+
+  try {
+    const user = await User.findById(recipientId).select("email name");
+    if (!user || !user.email) return;
+
+    const from = process.env.SMTP_FROM || process.env.SMTP_USER || (etherealAccount && etherealAccount.user) || "vpms@localhost";
+    const info = await transporter.sendMail({
+      from,
+      to: user.email,
+      subject: "[VPMS] " + subject,
+      text,
+      html: buildEmailHtml(subject, text),
+    });
+
+    if (etherealAccount && !process.env.SMTP_HOST) {
+      const previewUrl = nodemailer.getTestMessageUrl(info);
+      if (previewUrl) console.log("[Email] Preview:", previewUrl);
+    }
+  } catch (err) {
+    console.error("[Email] Failed:", err.message);
+  }
+};
+
+// --- Visitor Email Sender ---
+const sendVisitorEmail = async (visitorEmail, subject, text) => {
+  const transporter = await getTransporter();
+  if (!transporter) return;
+
+  try {
+    const from = process.env.SMTP_FROM || process.env.SMTP_USER || (etherealAccount && etherealAccount.user) || "vpms@localhost";
+    const info = await transporter.sendMail({
+      from,
+      to: visitorEmail,
+      subject: "[VPMS] " + subject,
+      text,
+      html: buildEmailHtml(subject, text),
+    });
+
+    if (etherealAccount && !process.env.SMTP_HOST) {
+      const previewUrl = nodemailer.getTestMessageUrl(info);
+      if (previewUrl) console.log("[Email->Visitor] Preview:", previewUrl);
+    }
+  } catch (err) {
+    console.error("[Email->Visitor] Failed:", err.message);
+  }
+};
+
+// --- SMS Sender ---
+const sendSmsNotification = async (recipientId, message, type) => {
+  if (!process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN || !process.env.TWILIO_PHONE_NUMBER) {
+    return;
+  }
+
+  if (type && !(await shouldSendSms(recipientId, type))) return;
+
+  try {
+    const user = await User.findById(recipientId).select("phone name");
+    if (!user || !user.phone) return;
+
+    const twilio = require("twilio")(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+    await twilio.messages.create({
+      body: "[VPMS] " + message,
+      from: process.env.TWILIO_PHONE_NUMBER,
+      to: user.phone,
+    });
+    console.log("[SMS] Sent to", user.name, "(" + user.phone + ")");
+  } catch (err) {
+    console.error("[SMS] Failed:", err.message);
+  }
+};
+
+// --- Core Notification Creator ---
+const createNotification = async (recipientId, type, data) => {
+  data = data || {};
   try {
     const template = NOTIFICATION_TEMPLATES[type];
     if (!template) return null;
-    const { title, message } = template(data);
+    const result = template(data);
+    const title = result.title;
+    const message = result.message;
 
     const notification = await Notification.create({
       recipient: recipientId,
@@ -79,8 +211,8 @@ const createNotification = async (recipientId, type, data = {}) => {
       passCode: data.passCode || "",
     });
 
-    sendEmailNotification(recipientId, title, message).catch(() => {});
-    sendSmsNotification(recipientId, message).catch(() => {});
+    sendEmailNotification(recipientId, title, message, type).catch(function() {});
+    sendSmsNotification(recipientId, message, type).catch(function() {});
 
     return notification;
   } catch (err) {
@@ -89,86 +221,44 @@ const createNotification = async (recipientId, type, data = {}) => {
   }
 };
 
-const createBulkNotification = async (recipientIds, type, data = {}) => {
+// --- Bulk Notification Creator ---
+const createBulkNotification = async (recipientIds, type, data) => {
+  data = data || {};
   try {
     const template = NOTIFICATION_TEMPLATES[type];
     if (!template) return;
-    const { title, message } = template(data);
+    const result = template(data);
+    const title = result.title;
+    const message = result.message;
 
-    const notifications = recipientIds.map((rid) => ({
-      recipient: rid,
-      type,
-      title,
-      message,
-      visitorId: null,
-      passCode: "",
-    }));
+    const notifications = recipientIds.map(function(rid) {
+      return {
+        recipient: rid,
+        type,
+        title,
+        message,
+        visitorId: null,
+        passCode: "",
+      };
+    });
 
     await Notification.insertMany(notifications);
+
+    recipientIds.forEach(function(rid) {
+      sendEmailNotification(rid, title, message, type).catch(function() {});
+      sendSmsNotification(rid, message, type).catch(function() {});
+    });
   } catch (err) {
     console.error("Failed to create bulk notifications:", err.message);
   }
 };
 
-const sendEmailNotification = async (recipientId, subject, text) => {
-  const transporter = getTransporter();
-  if (!transporter) return;
+// --- Lifecycle Notifier (N+1 optimized: batch fetch users + preferences) ---
+const notifyVisitorLifecycle = async function(visitor, action, reqUser) {
+  var employeeId = visitor.employee;
+  var createdBy = visitor.createdBy;
 
-  try {
-    const user = await User.findById(recipientId).select("email name");
-    if (!user || !user.email) return;
-
-    await transporter.sendMail({
-      from: process.env.SMTP_FROM || process.env.SMTP_USER,
-      to: user.email,
-      subject: `[VPMS] ${subject}`,
-      text,
-      html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto">
-        <div style="background:#1a1a2e;color:white;padding:16px 20px;border-radius:8px 8px 0 0">
-          <h3 style="margin:0">Visitor Pass Management</h3>
-        </div>
-        <div style="padding:20px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 8px 8px">
-          <h4 style="color:#1a1a2e;margin-top:0">${subject}</h4>
-          <p style="color:#4b5563;line-height:1.6">${text}</p>
-          <hr style="border:none;border-top:1px solid #e5e7eb;margin:16px 0" />
-          <p style="color:#9ca3af;font-size:12px">This is an automated notification from the Visitor Pass Management System.</p>
-        </div>
-      </div>`,
-    });
-  } catch (err) {
-    console.error("Email notification failed:", err.message);
-  }
-};
-
-const sendSmsNotification = async (recipientId, message) => {
-  if (!process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN || !process.env.TWILIO_PHONE_NUMBER) {
-    return;
-  }
-
-  try {
-    const user = await User.findById(recipientId).select("phone");
-    if (!user || !user.phone) return;
-
-    const twilio = require("twilio")(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
-    await twilio.messages.create({
-      body: `[VPMS] ${message}`,
-      from: process.env.TWILIO_PHONE_NUMBER,
-      to: user.phone,
-    });
-  } catch (err) {
-    console.error("SMS notification failed:", err.message);
-  }
-};
-
-const notifyVisitorLifecycle = async (visitor, action, reqUser) => {
-  const employeeId = visitor.employee;
-  const createdBy = visitor.createdBy;
-
-  const notifyTarget = (action === "VISITOR_REGISTERED" || action === "VISITOR_APPROVED" || action === "VISITOR_REJECTED")
-    ? employeeId
-    : employeeId;
-
-  const baseData = {
+  var baseData = {
     visitorId: visitor._id,
     passCode: visitor.passCode,
     visitorName: visitor.fullName,
@@ -178,18 +268,66 @@ const notifyVisitorLifecycle = async (visitor, action, reqUser) => {
     remarks: visitor.remarks || "",
     time: new Date().toLocaleTimeString(),
     duration: visitor.checkInTime
-      ? `${Math.round((new Date() - new Date(visitor.checkInTime)) / 60000)} min`
+      ? Math.round((new Date() - new Date(visitor.checkInTime)) / 60000) + " min"
       : "",
   };
 
-  const targets = new Set();
-  if (String(employeeId) !== String(reqUser._id)) targets.add(String(employeeId));
+  var targetIds = [];
+  if (String(employeeId) !== String(reqUser._id)) targetIds.push(String(employeeId));
   if (String(createdBy) !== String(reqUser._id) && String(createdBy) !== String(employeeId)) {
-    targets.add(String(createdBy));
+    if (targetIds.indexOf(String(createdBy)) === -1) targetIds.push(String(createdBy));
   }
 
-  for (const uid of targets) {
-    await createNotification(uid, action, baseData);
+  var template = NOTIFICATION_TEMPLATES[action];
+  var templateResult = template ? template(baseData) : null;
+
+  if (targetIds.length > 0 && templateResult) {
+    var [users, prefs] = await Promise.all([
+      User.find({ _id: { $in: targetIds } }).select("email name phone").lean(),
+      NotificationPreference.find({ user: { $in: targetIds } }).lean(),
+    ]);
+
+    var userMap = {};
+    users.forEach(function(u) { userMap[String(u._id)] = u; });
+
+    var prefMap = {};
+    prefs.forEach(function(p) { prefMap[String(p.user)] = p; });
+
+    var notifications = [];
+    for (var i = 0; i < targetIds.length; i++) {
+      var rid = targetIds[i];
+      notifications.push({
+        recipient: rid,
+        type: action,
+        title: templateResult.title,
+        message: templateResult.message,
+        visitorId: visitor._id || null,
+        passCode: visitor.passCode || "",
+      });
+
+      var pref = prefMap[rid];
+      var user = userMap[rid];
+
+      if (pref && pref.emailEnabled && pref.emailTypes.indexOf(action) !== -1 && user && user.email) {
+        sendEmailNotification(rid, templateResult.title, templateResult.message, action).catch(function() {});
+      } else if (!pref && user && user.email) {
+        sendEmailNotification(rid, templateResult.title, templateResult.message, action).catch(function() {});
+      }
+
+      if (pref && pref.smsEnabled && pref.smsTypes.indexOf(action) !== -1 && user && user.phone) {
+        sendSmsNotification(rid, templateResult.message, action).catch(function() {});
+      } else if (!pref && user && user.phone) {
+        sendSmsNotification(rid, templateResult.message, action).catch(function() {});
+      }
+    }
+
+    await Notification.insertMany(notifications);
+  }
+
+  if (visitor.email && ["VISITOR_REGISTERED", "VISITOR_APPROVED", "VISITOR_REJECTED"].indexOf(action) !== -1) {
+    if (templateResult) {
+      sendVisitorEmail(visitor.email, templateResult.title, templateResult.message).catch(function() {});
+    }
   }
 };
 
@@ -198,5 +336,6 @@ module.exports = {
   createBulkNotification,
   sendEmailNotification,
   sendSmsNotification,
+  sendVisitorEmail,
   notifyVisitorLifecycle,
 };

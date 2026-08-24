@@ -4,6 +4,22 @@ const mongoose = require("mongoose");
 jest.mock("../models/Visitor");
 jest.mock("../models/User");
 jest.mock("../models/ActivityLog");
+jest.mock("../models/Notification");
+jest.mock("../models/NotificationPreference");
+jest.mock("../services/notificationService", () => ({
+  notifyVisitorLifecycle: jest.fn().mockResolvedValue(undefined),
+  createBulkNotification: jest.fn().mockResolvedValue(undefined),
+  createNotification: jest.fn().mockResolvedValue(undefined),
+  sendEmailNotification: jest.fn().mockResolvedValue(undefined),
+  sendSmsNotification: jest.fn().mockResolvedValue(undefined),
+  sendVisitorEmail: jest.fn().mockResolvedValue(undefined),
+}));
+jest.mock("nodemailer", () => ({
+  createTestAccount: jest.fn().mockResolvedValue({ user: "test@ethereal", pass: "testpass" }),
+  createTransport: jest.fn().mockReturnValue({ sendMail: jest.fn().mockResolvedValue({ messageId: "test" }) }),
+  getTestMessageUrl: jest.fn().mockReturnValue("http://preview.test"),
+}));
+jest.mock("twilio", () => jest.fn().mockReturnValue({ messages: { create: jest.fn().mockResolvedValue({ sid: "test-sid" }) } }));
 
 const Visitor = require("../models/Visitor");
 const User = require("../models/User");
